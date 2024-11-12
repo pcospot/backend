@@ -15,4 +15,13 @@ public class Role {
     private String name;
     private Integer permission;
     private Integer color;
+
+    public Role() {}
+    public Role(Long id, Long server, String name, Integer permission, Integer color) {
+        this.id = id;
+        this.server = server;
+        this.name = name;
+        this.permission = permission;
+        this.color = color;
+    }
 }
