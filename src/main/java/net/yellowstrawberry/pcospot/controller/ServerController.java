@@ -9,6 +9,7 @@ import net.yellowstrawberry.pcospot.db.repository.ServerRepository;
 import net.yellowstrawberry.pcospot.object.server.Member;
 import net.yellowstrawberry.pcospot.object.server.Role;
 import net.yellowstrawberry.pcospot.object.user.AuthUser;
+import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -59,9 +60,22 @@ public class ServerController {
     }
 
     @GetMapping("/server/{id}/{channel}/messages")
-    public ResponseEntity<?> fetchMessages(@PathVariable Long id, @PathVariable Long channel) {
-        // TODO: 귀찮
-        throw new UnsupportedOperationException();
+    public ResponseEntity<?> fetchMessages(@PathVariable Long id, @PathVariable Long channel, @RequestParam(value = "before") Long before, @RequestParam(value = "after") Long after, @RequestParam(value = "max") Integer max) {
+        JSONObject o = new JSONObject();
+
+        JSONArray a = MessageManager.loadMessages(
+                id,
+                channel,
+                before==null?System.currentTimeMillis():before,
+                after==null?0:after,
+                max==null?50:max
+        );
+        if (a != null) {
+            o.put("messages", a);
+            o.put("last_update", serverRepository.findById(id).get().getLastUpdate());
+
+            return new ResponseEntity<>(o.toString(), HttpStatus.OK);
+        }else return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
 
     @GetMapping("/server/{id}/role/{roleId}")
@@ -106,6 +120,29 @@ public class ServerController {
                 principal.getAccount().getId(),
                 o.has("reply")?o.getLong("reply"):-1,
                 o.getString("content")
+        ) ? new ResponseEntity<>(HttpStatus.OK) : new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+
+    @PostMapping("/server/{id}/{channelId}/{messageId}")
+    public ResponseEntity<?> editMessage(@PathVariable Long id, @PathVariable Long channelId, @PathVariable Long messageId, String body, @AuthenticationPrincipal AuthUser principal) {
+        JSONObject o = new JSONObject(body);
+
+        return MessageManager.edit(
+                id,
+                channelId,
+                messageId,
+                principal.getAccount().getId(),
+                o.getString("content")
+        ) ? new ResponseEntity<>(HttpStatus.OK) : new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+
+    @DeleteMapping("/server/{id}/{channelId}/{messageId}")
+    public ResponseEntity<?> editMessage(@PathVariable Long id, @PathVariable Long channelId, @PathVariable Long messageId, @AuthenticationPrincipal AuthUser principal) {
+        return MessageManager.delete(
+                id,
+                channelId,
+                messageId,
+                principal.getAccount().getId()
         ) ? new ResponseEntity<>(HttpStatus.OK) : new ResponseEntity<>(HttpStatus.FORBIDDEN);
     }
 }
