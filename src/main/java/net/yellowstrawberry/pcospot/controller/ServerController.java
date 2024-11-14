@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+@RestController
 @RequestMapping("/server/")
 public class ServerController {
 
@@ -103,6 +104,12 @@ public class ServerController {
         roleRepository.save(r);
 
         return new ResponseEntity<>(gson.toJson(r), HttpStatus.OK);
+    }
+
+    @PutMapping("/server/{id}/role/{role}/to/{user}")
+    public ResponseEntity<?> applyRole(@PathVariable Long id, @PathVariable Long role, @PathVariable Long user) {
+        // TODO
+        throw new UnsupportedOperationException();
     }
 
     private Role buildRoleOutOfJSON(long server, String body) {

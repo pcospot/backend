@@ -19,6 +19,7 @@ public class Server {
     private Long owner;
     private Timestamp createdAt;
     private Long end;
+    private boolean invite;
 
     @Transient
     private long lastUpdate;
