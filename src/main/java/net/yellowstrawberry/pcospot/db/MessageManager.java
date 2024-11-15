@@ -23,7 +23,7 @@ public class MessageManager {
 
     private static boolean check(long server) {
         Optional<Server> so = serverRepository.findById(server);
-        return so.map(value -> value.getEnd() < System.currentTimeMillis()).orElse(true);
+        return so.map(value -> ((Boolean)(value.getEnd() < System.currentTimeMillis())).booleanValue()).orElse(true);
     }
 
     public static boolean message(long server, long channel, long author, long reply, String content) {
@@ -86,6 +86,6 @@ public class MessageManager {
     }
 
     public static boolean isThereNewMessage(long lastSeen, long serverId) {
-        return serverRepository.findById(serverId).map(server -> server.getLastUpdate() > lastSeen).orElse(false);
+        return serverRepository.findById(serverId).map(server -> ((Boolean)(server.getLastUpdate() > lastSeen)).booleanValue()).orElse(false);
     }
 }
