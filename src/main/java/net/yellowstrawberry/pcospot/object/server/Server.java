@@ -19,6 +19,7 @@ public class Server {
     private Long owner;
     private Timestamp createdAt;
     private Long end;
+    private Long image;
     private boolean invite;
 
     @Transient

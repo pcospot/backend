@@ -16,9 +16,9 @@ import java.sql.Timestamp;
 public class Member {
 
     @Id
-    private Integer user;
-    private Integer serverid;
-    private Integer role;
+    private Long user;
+    private Long serverid;
+    private Long role;
     private Timestamp joined;
     @Convert(converter = JsonToString.class)
     private JSONObject seen;

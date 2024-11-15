@@ -11,13 +11,10 @@ public class AuthUser implements OAuth2User {
 
     @Getter
     private final User account;
-    @Getter
-    private final Object data;
     private final OAuth2User oAuth2User;
 
-    public AuthUser(User account, Object data, OAuth2User oAuth2User) {
+    public AuthUser(User account, OAuth2User oAuth2User) {
         this.account = account;
-        this.data = data;
         this.oAuth2User = oAuth2User;
     }
 

@@ -9,27 +9,33 @@ import net.yellowstrawberry.pcospot.db.repository.ServerRepository;
 import net.yellowstrawberry.pcospot.object.server.Member;
 import net.yellowstrawberry.pcospot.object.server.Role;
 import net.yellowstrawberry.pcospot.object.user.AuthUser;
+import net.yellowstrawberry.pcospot.service.StoreService;
 import org.json.JSONArray;
 import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/server/")
 public class ServerController {
 
     private final Gson gson = new Gson();
-    private ServerRepository serverRepository;
-    private MemberRepository memberRepository;
-    private RoleRepository roleRepository;
+    private final ServerRepository serverRepository;
+    private final MemberRepository memberRepository;
+    private final RoleRepository roleRepository;
+    private final StoreService storeService;
 
-    public ServerController(ServerRepository serverRepository, MemberRepository memberRepository, RoleRepository roleRepository) {
+    public ServerController(ServerRepository serverRepository, MemberRepository memberRepository, RoleRepository roleRepository, StoreService storeService) {
         this.serverRepository = serverRepository;
         this.memberRepository = memberRepository;
         this.roleRepository = roleRepository;
+        this.storeService = storeService;
     }
 
     @GetMapping("/{id}/")
@@ -60,6 +66,21 @@ public class ServerController {
                 );
     }
 
+    @GetMapping("/{id}/image")
+    public ResponseEntity<?> fetchImage(@PathVariable Long id) {
+        return serverRepository.findById(id)
+                .map((server) -> new ResponseEntity<>(storeService.load(server.getImage()), HttpStatus.OK)).orElse(
+                        new ResponseEntity<>(HttpStatus.NOT_FOUND)
+                );
+    }
+
+    @PostMapping("/{id}/image")
+    public ResponseEntity<?> setImage(@PathVariable Long id, @RequestParam("file") MultipartFile file, @AuthenticationPrincipal AuthUser principal) {
+        if(checkAdmin(id, principal.getAccount().getId())) return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        return serverRepository.findById(id)
+                .map((server) -> ResponseEntity.ok("{\"id\": %d}".formatted(storeService.store(file)))).orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
+    }
+
     @GetMapping("/server/{id}/{channel}/messages")
     public ResponseEntity<?> fetchMessages(@PathVariable Long id, @PathVariable Long channel, @RequestParam(value = "before") Long before, @RequestParam(value = "after") Long after, @RequestParam(value = "max") Integer max) {
         JSONObject o = new JSONObject();
@@ -87,7 +108,8 @@ public class ServerController {
     }
 
     @PostMapping("/server/{id}/role/{roleId}")
-    public ResponseEntity<?> editRole(@PathVariable Long id, @PathVariable Long roleId, String body) {
+    public ResponseEntity<?> editRole(@PathVariable Long id, @PathVariable Long roleId, String body, @AuthenticationPrincipal AuthUser principal) {
+        if(checkAdmin(id, principal.getAccount().getId())) return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         JSONObject o = new JSONObject(body);
         return roleRepository.findRoleByIdAndServer(id, roleId).map(r -> {
             if(o.has("name")) r.setName(o.getString("name"));
@@ -99,7 +121,8 @@ public class ServerController {
     }
 
     @PutMapping("/server/{id}/role")
-    public ResponseEntity<?> createRole(@PathVariable Long id, String body) {
+    public ResponseEntity<?> createRole(@PathVariable Long id, String body, @AuthenticationPrincipal AuthUser principal) {
+        if(checkAdmin(id, principal.getAccount().getId())) return new ResponseEntity<>(HttpStatus.FORBIDDEN);
         Role r = buildRoleOutOfJSON(id, body);
         roleRepository.save(r);
 
@@ -107,9 +130,19 @@ public class ServerController {
     }
 
     @PutMapping("/server/{id}/role/{role}/to/{user}")
-    public ResponseEntity<?> applyRole(@PathVariable Long id, @PathVariable Long role, @PathVariable Long user) {
-        // TODO
-        throw new UnsupportedOperationException();
+    public ResponseEntity<?> applyRole(@PathVariable Long id, @PathVariable Long role, @PathVariable Long user, @AuthenticationPrincipal AuthUser principal) {
+        if(checkAdmin(id, principal.getAccount().getId())) return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+        Member m = memberRepository.findByServeridAndUser(id, user).get(0);
+        m.setRole(role);
+        memberRepository.save(m);
+        return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    private boolean checkAdmin(Long server, Long user) {
+        Optional<Role> r = roleRepository.findRoleByIdAndServer(memberRepository.findByServeridAndUser(server, user).get(0).getRole(), server);
+        if(r.isPresent() && r.get().getPermission() == 1<<2) return true;
+
+        return serverRepository.findById(server).get().getOwner().longValue()==user;
     }
 
     private Role buildRoleOutOfJSON(long server, String body) {
